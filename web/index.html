@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="https://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.2.min.css" type="text/css" />
     <script type="text/javascript" src="https://cdn.pydata.org/bokeh/release/bokeh-0.12.2.min.js"></script>
     <script type="text/javascript" src="https://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.2.min.js"></script>
-
+    <script type="text/javascript" src="/eel.js"></script>
     <script>
     //send temperature date to Dyna
     function SubmitTempSet() {
@@ -31,12 +31,23 @@
 
   function startMeasure(){
     //eel.measure_rand();
-    file_name = document.getElementById('FileName').value
-    eel.start_RT_sequence(300,250,10,1,1,1,file_name)
-  }
-    </script>
-    <script type="text/javascript" src="/eel.js"></script>
+    eel.start_RT_sequence(300,250,10,1,1,1,'test.csv')
+  };
 
+  eel.expose(toggle_start_measure);
+  function toggle_start_measure(){
+    document.getElementById("start_measure").disabled = ! document.getElementById("start_measure").disabled
+  };
+    </script>
+
+    <script>
+    function choose_dir(){
+      console.log('choose')
+    var path = dialog.showOpenDialog({
+    properties: ['openDirectory']
+      });
+      }
+    </script>
 
     <script type="text/javascript">
         Bokeh.$(function() {
@@ -54,8 +65,7 @@
       <div class = "row">
         <div class="col-sm-4">
     <div class = "container" id= "filePath">
-      <label for="FileName">File Name</label>
-      <input type="file" class="form-control-file" id="FileName" >
+      <button type="button" class="btn btn-primary" onclick="">Folder</button>
     </div>
   <div id="Temperature">
        <form>
@@ -70,13 +80,14 @@
      <div class="form-group">
     <label for="temp_mode">Mode</label>
     <select multiple class="form-control" id="temp_mode">
-      <option value='0'>Fast</option>
+      <option value='0' selected>Fast</option>
       <option value='1'>No Overshoot</option>
     </select>
   </div>
   <button type="button" class="btn btn-primary" onclick="SubmitTempSet()">Set</button>
    </form>
-   <button type="button" class="btn btn-primary" onclick="startMeasure()">Start Measure</button>
+   <button type="button" class="btn btn-primary" id="start_measure" onclick="startMeasure()">Start Measure</button>
+   <button type="button" class="btn btn-danger" onclick="eel.halt_measurement()">Stop Measure</button>
      </div>
      <div>
        <label for="Temp_cur">Temperature</label>
