@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+
+    <!-- jQuery library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+    <!-- Latest compiled JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <meta charset="utf-8">
+    <title>RT Test</title>
+
+    <!-- Bokeh related stuff -->
+    <link rel="stylesheet" href="https://cdn.pydata.org/bokeh/release/bokeh-0.12.2.min.css" type="text/css" />
+    <link rel="stylesheet" href="https://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.2.min.css" type="text/css" />
+    <script type="text/javascript" src="https://cdn.pydata.org/bokeh/release/bokeh-0.12.2.min.js"></script>
+    <script type="text/javascript" src="https://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.2.min.js"></script>
+
+    <script>
+    //send temperature date to Dyna
+    function SubmitTempSet() {
+    var setpoint = $("#temp_setpoint").val();
+    var rate = $("#temp_rate").val();
+    var mode = $("#temp_mode").val()[0];
+    eel.set_temperature_settings(setpoint,rate,mode)
+  };
+
+  function startMeasure(){
+    //eel.measure_rand();
+    file_name = document.getElementById('FileName').value
+    eel.start_RT_sequence(300,250,10,1,1,1,file_name)
+  }
+    </script>
+    <script type="text/javascript" src="/eel.js"></script>
+
+
+    <script type="text/javascript">
+        Bokeh.$(function() {
+        Bokeh.safely(function() {
+            var docs_json = {"0d9b4f2d-2e86-428d-8068-33b65593b842":{"roots":{"references":[{"attributes":{"fill_color":{"value":"#1f77b4"},"line_color":{"value":"#1f77b4"},"x":{"field":"T"},"y":{"field":"R"}},"id":"7262a9fe-8e4e-4be3-a634-500d2d8e366c","type":"Circle"},{"attributes":{},"id":"ddee509c-be08-4332-8125-417b8962d530","type":"ToolEvents"},{"attributes":{"callback":null,"column_names":["R","T"],"data":{"R":[0],"T":[0]},"name":"RT_data"},"id":"d190064c-f2a1-45c1-884d-0ef0018a1d1c","type":"ColumnDataSource"},{"attributes":{"formatter":{"id":"9594d21a-72fd-4bb4-9c98-67fb9a6dec42","type":"BasicTickFormatter"},"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"},"ticker":{"id":"ca3a47ed-da3b-413e-9b2a-15570e5c836c","type":"BasicTicker"}},"id":"29640c67-d080-4561-8ab5-f4e2e8d2e7c7","type":"LinearAxis"},{"attributes":{},"id":"ca3a47ed-da3b-413e-9b2a-15570e5c836c","type":"BasicTicker"},{"attributes":{"overlay":{"id":"2d3652e3-452b-473e-b36d-bd24a7b24c52","type":"BoxAnnotation"},"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"}},"id":"d1393c70-55f3-48f2-a4d4-3b98ccaa02c1","type":"BoxZoomTool"},{"attributes":{"callback":null},"id":"c8887afd-0f3d-4aeb-ae02-dc09fbfa9ed3","type":"DataRange1d"},{"attributes":{"bottom_units":"screen","fill_alpha":{"value":0.5},"fill_color":{"value":"lightgrey"},"left_units":"screen","level":"overlay","line_alpha":{"value":1.0},"line_color":{"value":"black"},"line_dash":[4,4],"line_width":{"value":2},"plot":null,"render_mode":"css","right_units":"screen","top_units":"screen"},"id":"2d3652e3-452b-473e-b36d-bd24a7b24c52","type":"BoxAnnotation"},{"attributes":{"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"}},"id":"a77fba33-ab01-406c-ae2c-18c6ef2aba7a","type":"WheelZoomTool"},{"attributes":{"below":[{"id":"8915c588-67d8-4b13-a202-b4d466ad5985","type":"LinearAxis"}],"left":[{"id":"29640c67-d080-4561-8ab5-f4e2e8d2e7c7","type":"LinearAxis"}],"renderers":[{"id":"8915c588-67d8-4b13-a202-b4d466ad5985","type":"LinearAxis"},{"id":"80c6469b-1c38-42f2-843e-9f938d3e010e","type":"Grid"},{"id":"29640c67-d080-4561-8ab5-f4e2e8d2e7c7","type":"LinearAxis"},{"id":"62049bca-54fe-4710-917c-8f7630bcf9c9","type":"Grid"},{"id":"2d3652e3-452b-473e-b36d-bd24a7b24c52","type":"BoxAnnotation"},{"id":"81316625-327e-46fd-9470-4882917b26b9","type":"GlyphRenderer"}],"title":{"id":"567943d5-73b5-41ff-a107-ae657292bdd6","type":"Title"},"tool_events":{"id":"ddee509c-be08-4332-8125-417b8962d530","type":"ToolEvents"},"toolbar":{"id":"bcdc089c-08d9-473b-a969-c0298de38a34","type":"Toolbar"},"x_range":{"id":"c8887afd-0f3d-4aeb-ae02-dc09fbfa9ed3","type":"DataRange1d"},"y_range":{"id":"6144a04a-4935-4175-8784-a24967273656","type":"DataRange1d"}},"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"},{"attributes":{},"id":"9dce0798-22f8-4d2a-ab7c-904670527d8b","type":"BasicTicker"},{"attributes":{"formatter":{"id":"ceb86343-02d3-463c-96ca-25c99071d415","type":"BasicTickFormatter"},"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"},"ticker":{"id":"9dce0798-22f8-4d2a-ab7c-904670527d8b","type":"BasicTicker"}},"id":"8915c588-67d8-4b13-a202-b4d466ad5985","type":"LinearAxis"},{"attributes":{},"id":"9594d21a-72fd-4bb4-9c98-67fb9a6dec42","type":"BasicTickFormatter"},{"attributes":{"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"}},"id":"4963b231-c707-455a-9929-35c347c97114","type":"ResetTool"},{"attributes":{"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"},"ticker":{"id":"9dce0798-22f8-4d2a-ab7c-904670527d8b","type":"BasicTicker"}},"id":"80c6469b-1c38-42f2-843e-9f938d3e010e","type":"Grid"},{"attributes":{"dimension":1,"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"},"ticker":{"id":"ca3a47ed-da3b-413e-9b2a-15570e5c836c","type":"BasicTicker"}},"id":"62049bca-54fe-4710-917c-8f7630bcf9c9","type":"Grid"},{"attributes":{"callback":null},"id":"6144a04a-4935-4175-8784-a24967273656","type":"DataRange1d"},{"attributes":{"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"}},"id":"467325fe-f656-45ec-94a0-e7f5f79f7443","type":"HelpTool"},{"attributes":{"active_drag":"auto","active_scroll":"auto","active_tap":"auto","tools":[{"id":"b0c1f4d8-5af4-4063-83bd-607da35d49fd","type":"PanTool"},{"id":"a77fba33-ab01-406c-ae2c-18c6ef2aba7a","type":"WheelZoomTool"},{"id":"d1393c70-55f3-48f2-a4d4-3b98ccaa02c1","type":"BoxZoomTool"},{"id":"f9555c96-748a-41f6-a52c-8b3a1306a133","type":"SaveTool"},{"id":"4963b231-c707-455a-9929-35c347c97114","type":"ResetTool"},{"id":"467325fe-f656-45ec-94a0-e7f5f79f7443","type":"HelpTool"}]},"id":"bcdc089c-08d9-473b-a969-c0298de38a34","type":"Toolbar"},{"attributes":{},"id":"ceb86343-02d3-463c-96ca-25c99071d415","type":"BasicTickFormatter"},{"attributes":{"data_source":{"id":"d190064c-f2a1-45c1-884d-0ef0018a1d1c","type":"ColumnDataSource"},"glyph":{"id":"7262a9fe-8e4e-4be3-a634-500d2d8e366c","type":"Circle"},"hover_glyph":null,"nonselection_glyph":{"id":"d33aef8d-4b79-4368-b849-8f28f4d299c7","type":"Circle"},"selection_glyph":null},"id":"81316625-327e-46fd-9470-4882917b26b9","type":"GlyphRenderer"},{"attributes":{"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"}},"id":"b0c1f4d8-5af4-4063-83bd-607da35d49fd","type":"PanTool"},{"attributes":{"plot":null,"text":"Resistance vs. Temperature"},"id":"567943d5-73b5-41ff-a107-ae657292bdd6","type":"Title"},{"attributes":{"plot":{"id":"93ca8ead-91a1-471c-8ed8-115fc9a29584","subtype":"Figure","type":"Plot"}},"id":"f9555c96-748a-41f6-a52c-8b3a1306a133","type":"SaveTool"},{"attributes":{"fill_alpha":{"value":0.1},"fill_color":{"value":"#1f77b4"},"line_alpha":{"value":0.1},"line_color":{"value":"#1f77b4"},"x":{"field":"T"},"y":{"field":"R"}},"id":"d33aef8d-4b79-4368-b849-8f28f4d299c7","type":"Circle"}],"root_ids":["93ca8ead-91a1-471c-8ed8-115fc9a29584"]},"title":"Bokeh Application","version":"0.12.2"}};
+            var render_items = [{"docid":"0d9b4f2d-2e86-428d-8068-33b65593b842","elementid":"fe55ba72-d11f-4e88-8607-8b29be1bc553","modelid":"93ca8ead-91a1-471c-8ed8-115fc9a29584"}];
+
+            //Bokeh.embed.embed_items(docs_json, render_items);
+        });
+    });
+    </script>
+
+  </head>
+  <body>
+      <div class = "row">
+        <div class="col-sm-4">
+    <div class = "container" id= "filePath">
+      <label for="FileName">File Name</label>
+      <input type="file" class="form-control-file" id="FileName" >
+    </div>
+  <div id="Temperature">
+       <form>
+         <div class="form-group">
+       <label for="temp_setpoint">Set Temperature</label>
+       <input type="text" class="form-control" id="temp_setpoint" value="300">
+     </div>
+     <div class="form-group">
+       <label for="temp_rate">Set Rate</label>
+       <input type="text" class="form-control" id="temp_rate" value="20">
+     </div>
+     <div class="form-group">
+    <label for="temp_mode">Mode</label>
+    <select multiple class="form-control" id="temp_mode">
+      <option value='0'>Fast</option>
+      <option value='1'>No Overshoot</option>
+    </select>
+  </div>
+  <button type="button" class="btn btn-primary" onclick="SubmitTempSet()">Set</button>
+   </form>
+   <button type="button" class="btn btn-primary" onclick="startMeasure()">Start Measure</button>
+     </div>
+     <div>
+       <label for="Temp_cur">Temperature</label>
+       <input id="temp_cur" class="form-control" type="text" readonly>
+       <label for="temp_status">Status</label>
+       <input id="temp_status" class="form-control" type="text" readonly>
+     </div>
+   </div>
+  <div class="col-sm-4">
+    <div class="container" height = "600">
+      <canvas id="RT" height ="600"></canvas>
+    </div>
+  </div>
+  <div class="col-sm-4">
+  </div>
+  </div>
+  <script>
+  //Get Temp data every sec
+
+  eel.expose(my_javascript_function);
+  function my_javascript_function(num) {
+  var temp_cur = document.getElementById("temp_cur");
+  temp_cur.value = num
+  }
+
+  eel.expose(get_RT_data);
+  function get_RT_data(T,R) {
+    myChart.data.datasets[0].data.push({x:T,y:R})
+    //myChart.options.scales.xAxes
+    myChart.update()
+    //var temp_cur = document.getElementById("temp_cur");
+    //temp_cur.value = T
+    //var temp_status = document.getElementById("temp_status");
+    //temp_status.value = R
+  }
+  //var data_timer = setInterval(get_data, 1000);
+  function get_data(){
+    $.get("/stream_temp_status", function(data, status){
+    var temp_cur = document.getElementById("temp_cur");
+    var temp_status = document.getElementById("temp_status");
+    temp_cur.value = data["temp"]
+    temp_status.value = data["status"]
+  });
+};
+  </script>
+
+  <script>
+  var ctx = document.getElementById('RT').getContext('2d');
+  var myChart = new Chart(ctx,{
+    type: 'scatter',
+    data:{
+      datasets: [{
+        label:  'Resistance',
+        backgroundColor: "#3e95cd",
+        data: [
+
+        ]
+      }]
+    },
+    options:{
+      scales: {
+    yAxes: [{
+      scaleLabel: {
+        display: true,
+        labelString: 'Resistance [Ohm]'
+      }
+    }],
+    xAxes: [{
+      scaleLabel: {
+        display: true,
+        labelString: 'Temperature [K]'
+      }
+    }]
+  },
+      title: {
+      display: true,
+      text: 'Resistance vs. Temperature'
+    },
+      responsive:true,
+      maintainAspectRatio: false
+    }
+  });
+  </script>
+  </body>
+
+</html>
