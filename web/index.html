@@ -31,7 +31,13 @@
 
   function startMeasure(){
     //eel.measure_rand();
-    eel.start_RT_sequence(300,250,10,1,1,1,'test.csv')
+    start_temp = document.getElementById("meas_start_temp").value
+    end_temp = document.getElementById("meas_end_temp").value
+    rate = document.getElementById("meas_rate").value
+    current = document.getElementById("set_current").value
+    voltage_comp = document.getElementById("voltage").value
+    nplc_speed = document.getElementById("nplc").value
+    eel.start_RT_sequence(start_temp,end_temp,rate,current,voltage_comp,nplc_speed,'test.csv')
   };
 
   eel.expose(toggle_start_measure);
@@ -64,10 +70,11 @@
   <body>
       <div class = "row">
         <div class="col-sm-4">
-    <div class = "container" id= "filePath">
-      <button type="button" class="btn btn-primary" onclick="">Folder</button>
-    </div>
-  <div id="Temperature">
+          <div class="container-fluid">
+  <div class = "row">
+  <div class = "container-fluid">
+  <div class="col-sm-4">
+  <div class = "container-fluid" id="Temperature">
        <form>
          <div class="form-group">
        <label for="temp_setpoint">Set Temperature</label>
@@ -84,24 +91,83 @@
       <option value='1'>No Overshoot</option>
     </select>
   </div>
-  <button type="button" class="btn btn-primary" onclick="SubmitTempSet()">Set</button>
+  <button type="button" class="btn btn-primary" onclick="SubmitTempSet()">Set Temperature</button>
    </form>
-   <button type="button" class="btn btn-primary" id="start_measure" onclick="startMeasure()">Start Measure</button>
-   <button type="button" class="btn btn-danger" onclick="eel.halt_measurement()">Stop Measure</button>
-     </div>
-     <div>
-       <label for="Temp_cur">Temperature</label>
-       <input id="temp_cur" class="form-control" type="text" readonly>
-       <label for="temp_status">Status</label>
-       <input id="temp_status" class="form-control" type="text" readonly>
+
      </div>
    </div>
+     <div class="col-sm-4">
+       <div class = "container-fluid" id="Magnet">
+            <form>
+              <div class="form-group">
+            <label for="magnet_setpoint">Set Field</label>
+            <input type="text" class="form-control" id="magnet_setpoint" value="0">
+          </div>
+          <div class="form-group">
+            <label for="mag_rate">Set Rate</label>
+            <input type="text" class="form-control" id="mag_rate" value="20">
+          </div>
+          <div class="form-group">
+         <label for="magnet_mode">Mode</label>
+         <select multiple class="form-control" id="magnet_mode">
+           <option value='0' selected>Linear</option>
+           <option value='1'>No Overshoot</option>
+           <option value='2'>Oscillate</option>
+         </select>
+       </div>
+       <button type="button" class="btn btn-primary" onclick="SubmitMagnetSet()">Set magnet</button>
+        </form>
+     </div>
+
+   </div>
+
+ </div>
+</div>
+   </div>
+
+<div class = "row">
+<div class = "container-fluid">
+<div class = "col-sm-4">
+
+                  <div class="form-group">
+                 <label for="set_current">set current [mA]</label>
+                 <input type="text" class="form-control" id="set_current" value="0.1">
+               </div>
+               <div class="form-group">
+                 <label for="voltage">Voltage compliance [V]</label>
+                 <input type="text" class="form-control" id="voltage" value="2">
+               </div>
+               <div class="form-group">
+              <label for="nplc">speed</label>
+              <input type="text" class="form-control" id="nplc" value="8">
+            </div>
+</div>
+<div class = 'col-sm-4'>
+            <div class="form-group">
+           <label for="meas_start_temp">Start Temperature</label>
+           <input type="text" class="form-control" id="meas_start_temp" value="200">
+          </div>
+          <div class="form-group">
+         <label for="meas_end_temp">End Temperature</label>
+         <input type="text" class="form-control" id="meas_end_temp" value="10">
+        </div>
+        <div class="form-group">
+       <label for="meas_rate">rate [K/min.]</label>
+       <input type="text" class="form-control" id="meas_rate" value="1.5">
+      </div>
+</div>
+</div>
+<div class = 'row'>
+               <button type="button" class="btn btn-primary" id="start_measure" onclick="startMeasure()">Start Measure</button>
+               <button type="button" class="btn btn-danger" onclick="eel.halt_measurement()">Stop Measure</button>
+</div>
+</div>
+
+</div>
   <div class="col-sm-4">
-    <div class="container" height = "600">
-      <canvas id="RT" height ="600"></canvas>
+    <div class="container" >
+      <canvas id="RT" height ="800"></canvas>
     </div>
-  </div>
-  <div class="col-sm-4">
   </div>
   </div>
   <script>

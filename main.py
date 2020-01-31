@@ -75,6 +75,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,file_name):
     breaked = False
     set_temperature_lock.acquire()
     stop.clear()
+    halt_meas.clear()
     new_file_name = initialize_file(file_name)
     initialize_keithley(I,V_comp,nplc) # return keith object
     print('start RT measurement.')
@@ -123,7 +124,6 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,file_name):
     halt_meas.clear()
     eel.toggle_start_measure()
     stop.set() #kill thread
-
 
 Dyna = qdinstrument.QDInstrument('DYNACOOL')
 eel.start('index.html')
