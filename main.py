@@ -95,7 +95,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,file_name):
         error,Temp,status = Dyna.get_temperature()
         eel.sleep(1)
     if (Temp != start_temp):
-        print('start temp not achieved')
+        print('start temp not achieved. current temp: {0}'.format(Temp))
     Dyna.set_temperature(end_temp,rate,0) #go to end, in rate, Fast settle
     error,Temp,status = Dyna.get_temperature()
     while status == 1:
