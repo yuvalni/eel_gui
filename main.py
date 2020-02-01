@@ -9,7 +9,7 @@ import numpy as np
 import logging
 import os
 from datetime import date
-
+from pymeasure.instruments.keithley import Keithley2400
 
 data_path = os.path.join(os.getcwd(),'data')
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.DEBUG)
 c_handler = logging.StreamHandler()
 f_handler = logging.FileHandler('logging.log')
 c_handler.setLevel(logging.DEBUG)
-f_handler.setLevel(logging.WARNING)
+f_handler.setLevel(logging.INFO)
 
 logger.addHandler(c_handler)
 logger.addHandler(f_handler)
@@ -47,8 +47,8 @@ def set_magnet_settings(setpoint,rate,mode):
         logging.info('magnet settings is locked.')
 
 
+
 def send_measure_data_to_page():
-    i=0
     logging.debug('start sending')
     while not stop.is_set():
         if not q.empty():
@@ -70,13 +70,31 @@ def measure_rand():
         #eel.sleep(0.5)
     logging.info('end measuring')
 
-def measure_resistance():
-    ##GPIB Stuff
-    eel.sleep(0.5)
-    return random.randint(0,25)
+def measure_resistance(sourcemeter):
+    if True: #'mocking'
+        eel.sleep(0.5)
+        return random.randint(0,25)
+    sourcemeter.ramp_to_current(sourcemeter.source_current)
+    sourcemeter.measure_voltage()
+    V_p = sourcemeter.voltage
+    eel.sleep(0.1)
+    sourcemeter.ramp_to_current(-sourcemeter.source_current)
+    sourcemeter.measure_voltage()
+    V_m = sourcemeter.voltage
+    sourcemetery.ramp_to_current(0)
+    return (V_p - V_m)/sourcemeter.source_current
 
 def initialize_keithley(I,V_comp,nplc):
-    #return keithly object
+    if False:
+        sourcemeter = Keithley2400("GPIB::4")
+        sourcemeter.reset()
+        sourcemeter.use_front_terminals()
+        sourcemeter.apply_current()
+        sourcemeter.compliance_voltage = V_comp
+        sourcemeter.measure_voltage(nplc=nplc, voltage=21.0, auto_range=True)
+        sourcemeter.source_current = I
+        sleep(0.1)
+        return sourcemeter
     pass
 
 
@@ -91,7 +109,6 @@ def initialize_file(file_name):
     while os.path.exists(file_path):
         file_path = os.path.join(path,"RT"+str(i)+".csv")
         i = i +1
-
     pd.DataFrame(columns = ['time','Temperature[k]','Resistance[Ohm]']).to_csv(file_path)
     return file_path
 
@@ -108,9 +125,8 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     stop.clear()
     halt_meas.clear()
     file_name = initialize_file(sample_name)
-    initialize_keithley(I,V_comp,nplc) # return keith object
+    keithley = initialize_keithley(I,V_comp,nplc) # return keith object
     logging.info('start RT measurement.')
-
     eel.spawn(send_measure_data_to_page)
     Dyna.set_temperature(start_temp,20,0) #go to start, 20 K/min, Fast settle
     eel.set_meas_status('waiting for temperature.')
@@ -144,7 +160,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
         error,Temp,status = Dyna.get_temperature()
         #Time = Dyna.get_timestamp()
         Time = 0
-        R = measure_resistance()
+        R = measure_resistance(keithley)
         new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Resistance[Ohm]']) #maybe keep file open?
         del new_row
         q.put((Temp,R))
@@ -160,6 +176,8 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     if not breaked:
         eel.set_meas_status('reached end Temperature.')
         logging.info('reached end Temperature.')
+    if False: #mocking
+        keithley.shutdown()
     set_temperature_lock.release()
     halt_meas.clear()
     eel.toggle_start_measure()
