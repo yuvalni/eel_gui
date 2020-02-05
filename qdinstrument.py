@@ -53,3 +53,16 @@ class QDInstrument:
         arg0 = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
         err = self._mvu.GetChamber(arg0)
         return err, arg0.value
+
+    def get_timestamp(self):
+        arg0 = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
+        err = self._mvu.GetTimeStamp
+        return err, arg0.value
+
+    def get_temp_range(self):
+        _minTemp = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_R8, 0.0)
+        _maxTemp = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_R8, 0.0)
+        _MinRate = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_R8, 0.0)
+        _MaxRate = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_R8, 0.0)
+        err = self._mvu.GetTempLimits(_minTemp, _maxTemp, _MinRate, _MaxRate)
+        return err, _minTemp.value, _maxTemp.value, _MinRate.value, _MaxRate.value
