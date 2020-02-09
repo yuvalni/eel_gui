@@ -17,7 +17,7 @@ while RUN:
         while True:
             data = conn.recv(1024)
             #if not data: break
-            if data == b'exit':
+            if data == b'exit':1
                 print('exiting')
                 RUN = False
                 break
@@ -32,3 +32,5 @@ while RUN:
         sleep(0.5)
     except socket.timeout:
         pass
+    except WindowsError as e:
+        print(e)

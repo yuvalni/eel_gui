@@ -22,6 +22,19 @@
     function set_meas_status(status){
       document.getElementById("meas_status").value = status;
     };
+    eel.expose(change_connection_ind)
+    function change_connection_ind(status){
+      ind = document.getElementById("server_connection_ind")
+      if (status){
+        ind.innerHTML = "Connected"
+        ind.className = "btn btn-success"
+      }
+      else{
+        ind.value = "Not Connected"
+        ind.className = "btn btn-warning"
+      }
+
+    }
 
     eel.expose(get_RT_data);
     function get_RT_data(T,R) {
@@ -191,6 +204,7 @@
     </div>
   </div>
   </div>
+  <button type="button" id="server_connection_ind" class="btn btn-warning">Not Connected</button>
   <script>
 
   var ctx = document.getElementById('RT').getContext('2d');

@@ -1,6 +1,7 @@
 import eel
 import pandas as pd
-import qdinstrument
+#import qdinstrument
+import socket
 #from Queue import Queue
 from queue import Queue
 from threading import Event, Lock
@@ -24,6 +25,8 @@ logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
 q = Queue()
+cmd_q = Queue()
+data_q = Queue(maxsize = 1)
 halt_meas = Event()
 stop = Event()
 set_temperature_lock = Lock()
@@ -33,7 +36,8 @@ eel.init('web')
 @eel.expose
 def set_temperature_settings(setpoint,rate,mode):
     if not set_temperature_lock.locked():
-        Dyna.set_temperature(setpoint,rate,mode)
+        #Dyna.set_temperature(setpoint,rate,mode)
+        cmd_q.put("TEMP {0},{1},{2}".format(setpoint,20,0))
         logging.info('set Temp to {0} K at {1} K/min. mode:{2}'.format(setpoint,rate,mode))
     else:
         logging.info('temperature settings is locked.')
@@ -41,7 +45,8 @@ def set_temperature_settings(setpoint,rate,mode):
 @eel.expose
 def set_magnet_settings(setpoint,rate,mode):
     if not set_temperature_lock.locked():
-        Dyna.set_field(setpoint,rate,mode,-1)
+        #Dyna.set_field(setpoint,rate,mode,-1)
+        cmd_q.put("FIELD {0},{1},{2}".format(setpoint,rate,mode))
         logging.info('set magnet to {0} oe at {1} oe/min. mode:{2}'.format(setpoint,rate,mode))
     else:
         logging.info('magnet settings is locked.')
@@ -128,7 +133,9 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     keithley = initialize_keithley(I,V_comp,nplc) # return keith object
     logging.info('start RT measurement.')
     eel.spawn(send_measure_data_to_page)
-    Dyna.set_temperature(start_temp,20,0) #go to start, 20 K/min, Fast settle
+    #Dyna.set_temperature(start_temp,20,0) #go to start, 20 K/min, Fast settle
+    cmd_q.put("TEMP{0},{1},{2}".format(start_temp,20,0))
+    while data_q.
     eel.set_meas_status('waiting for temperature.')
     logging.info('set Temperature and wait')
     error,Temp,status = Dyna.get_temperature()
@@ -146,7 +153,8 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
         eel.sleep(1)
     if (Temp != start_temp):
         logging.warning('start temp not achieved. current temp: {0}'.format(Temp))
-    Dyna.set_temperature(end_temp,rate,0) #go to end, in rate, Fast settle
+    #Dyna.set_temperature(end_temp,rate,0) #go to end, in rate, Fast settle
+    cmd_q.put("TEMP {0},{1},{2}".format(end_temp,rate,0))
     error,Temp,status = Dyna.get_temperature()
     while status == 1:
         #wait for start of movement
@@ -183,6 +191,44 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     eel.toggle_start_measure()
     stop.set() #kill thread
 
+def QD_socket(HOST='localhost',PORT=5000):
+    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    logging.info('Attempt connect to server.')
+    try:
+        s.connect((HOST,PORT))
+        logging.info('connected to server.')
+        eel.change_connection_ind(True)
+        while True:
+            if not cmd_q.empty():
+                command = cmd_q.get()
+                s.sendall(bytes(command,'utf-8'))
+                data = s.recv(1024)
+                #if data != b'0\r\n':
+                #    logging.error('error Recived from QD server, ' + data.decode())
+                #    eel.change_connection_ind(False)
+                #print('Recived: ', data.decode())11
+                data_q.put(data)
+            eel.sleep(0.5)
+            pass
+        s.send(b'disconnect')
+        s.close()
+    #except Exception as e:
+    #    print(e)
+    except WindowsError:
+        eel.change_connection_ind(False)
+        logging.info('Connection to server failed.')
 
-Dyna = qdinstrument.QDInstrument('DYNACOOL')
-eel.start('index.html')
+
+
+eel.spawn(QD_socket)
+#cmd_q.put('TEMP?')
+
+#Dyna = qdinstrument.QDInstrument('DYNACOOL')
+try:
+    eel.start('index.html')
+except (SystemExit, MemoryError, KeyboardInterrupt):
+    # But if we don't catch these safely, the script will crash
+    pass
+
+
+## Set temperture everywhere and update on request.

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+    <meta charset="utf-8">
+    <title></title>
+    <script type="text/javascript">
+          document.addEventListener('DOMContentLoaded', function() {
+          var elems = document.querySelectorAll('select');
+          var instances = M.FormSelect.init(elems, options);
+        });
+    </script>
+  </head>
+  <body>
+    <nav>
+      <div class="nav-wrapper teal">
+
+        <ul id="nav" class="left">
+              <div class="container">
+              <li><input type="text" class="white-text" id="sample_name" placeholder="Sample Name"></li>
+              </div>
+
+        </ul>
+
+        <ul class="right" id="nav">
+          
+                <li><button type="button" id="server_connection_ind" class="btn">Not Connected</button></li>
+
+        </ul>
+
+
+
+      </div>
+    </nav>
+
+      <div class="row">
+        <div class="col s2">
+          <div class="container">
+
+          <div class="section">
+                  <form>
+                        <div class="input-field">
+                        <label for="temp_setpoint">Set Temperature</label>
+                        <input type="text" class="form-control" id="temp_setpoint" value="300">
+                              </div>
+                            <div class="input-field">
+                            <label for="temp_rate">Set Rate</label>
+                            <input type="text" class="form-control" id="temp_rate" value="20">
+                          </div>
+                          <div class="input-field">
+                         <label for="temp_mode">Mode</label>
+                         <select id="temp_mode">
+                           <option value='0' selected>Fast</option>
+                           <option value='1'>No Overshoot</option>
+                         </select>
+                       </div>
+                       <button type="button" class="btn btn-primary" onclick="SubmitTempSet()">Set Temperature</button>
+                </form>
+            </div>
+            <div class="divider"></div>
+            <div class="section">
+                          <form>
+                            <div class="input-field">
+                          <label for="magnet_setpoint ">Set Field</label>
+                          <input type="text" class="form-control" id="magnet_setpoint" value="0">
+                        </div>
+                        <div class="input-field">
+                          <label for="mag_rate">Set Rate</label>
+                          <input type="text" class="form-control" id="mag_rate" value="20">
+                        </div>
+                      <div class="input-field">
+                         <select id="magnet_mode">
+                           <option value='0' selected>Linear</option>
+                           <option value='1'>No Overshoot</option>
+                           <option value='2'>Oscillate</option>
+                         </select>
+                         <label for="magnet_mode">Mode</label>
+                     </div>
+
+                     <button type="button" class="btn btn-primary" onclick="SubmitFieldSet()">Set magnet</button>
+                      </form>
+              </div>
+        </div>
+        </div>
+        <div class="col s10">
+
+              <canvas id="RT" height="750" ></canvas>
+
+        </div>
+
+    </div>
+    <footer class="page-footer white">
+    <div class="row">
+      <div>
+
+                  <div class="input-field col s1">
+                     <label for="set_current">set current [mA]</label>
+                     <input type="text" id="set_current" value="0.1">
+                  </div>
+                  <div class="input-field col s1">
+                     <label for="voltage">Compliance [V]</label>
+                     <input type="text" id="voltage" value="2">
+                   </div>
+                   <div class="input-field col s1">
+                    <label for="nplc">Speed</label>
+                    <input type="text" id="nplc" value="8">
+                  </div>
+                  <div class="input-field col s1">
+                       <label for="meas_start_temp">Start Temperature</label>
+                       <input type="text" id="meas_start_temp" value="200">
+                  </div>
+                  <div class="input-field col s1">
+                     <label for="meas_end_temp">End Temperature</label>
+                     <input type="text"  id="meas_end_temp" value="10">
+                  </div>
+                  <div class="input-field col s1">
+                     <label for="meas_rate">rate [K/min.]</label>
+                     <input type="text" id="meas_rate" value="1.5">
+                  </div>
+                  <div class="col s1.5">
+                    <button type="button" class="btn" id="start_measure" onclick="startMeasure()">Start Measure</button>
+
+                  </div>
+                  <div class="col s1.5">
+                    <button type="button" class="btn #b71c1c red darken-4" onclick="eel.halt_measurement()">Stop</button>
+                  </div>
+                  <div class="col s2">
+                    <input type="text" class="form-control" id="meas_status" value="" placeholder="Status" disabled>
+                  </div>
+  </div>
+    </div>
+ </footer>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+  <script>
+
+  var ctx = document.getElementById('RT').getContext('2d');
+  var myChart = new Chart(ctx,{
+    type: 'scatter',
+    data:{
+      datasets: [{
+        label:  'Resistance',
+        backgroundColor: "#3e95cd",
+        data: [
+
+        ]
+      }]
+    },
+    options:{
+      scales: {
+    yAxes: [{
+      scaleLabel: {
+        display: true,
+        labelString: 'Resistance [Ohm]'
+      }
+    }],
+    xAxes: [{
+      scaleLabel: {
+        display: true,
+        labelString: 'Temperature [K]'
+      }
+    }]
+  },
+      title: {
+      display: true,
+      text: 'Resistance vs. Temperature'
+    },
+      responsive:true,
+      maintainAspectRatio: false
+    }
+  });
+
+  </script>
+
+  </body>
+</html>
