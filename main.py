@@ -126,6 +126,10 @@ def halt_measurement():
 def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     eel.toggle_start_measure()
     breaked = False
+
+    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #reach the server
+    s.connect(('localhost',5000))   #handle not connecting
+    logging.info('connected to server. whithn RT_seq')
     set_temperature_lock.acquire()
     stop.clear()
     halt_meas.clear()
@@ -134,11 +138,16 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     logging.info('start RT measurement.')
     eel.spawn(send_measure_data_to_page)
     #Dyna.set_temperature(start_temp,20,0) #go to start, 20 K/min, Fast settle
-    cmd_q.put("TEMP{0},{1},{2}".format(start_temp,20,0))
-    while data_q.
+    #cmd_q.put("TEMP{0},{1},{2}".format(start_temp,20,0))
+    s.sendall(bytes("TEMP {0},{1},{2}".format(start_temp,20,0),'utf-8'))
+    data = s.recv(1024)
+    assert data == b'0\r\n' #assert no errors from dynacool
     eel.set_meas_status('waiting for temperature.')
     logging.info('set Temperature and wait')
-    error,Temp,status = Dyna.get_temperature()
+    #error,Temp,status = Dyna.get_temperature()
+    s.sendall(bytes("TEMP?",'utf-8'))
+    data = s.recv(1024)
+    error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
     while status != 1 and status != 5: #add timeout
         if halt_meas.is_set():
             logging.info('stoped measurement.')
@@ -149,25 +158,41 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
             eel.toggle_start_measure()
             return False
         #print(status)
-        error,Temp,status = Dyna.get_temperature()
+        s.sendall(bytes("TEMP?",'utf-8'))
+        data = s.recv(1024)
+        error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
+        #logging.debug('waiting for temp, status:{}'.format(status))
         eel.sleep(1)
     if (Temp != start_temp):
-        logging.warning('start temp not achieved. current temp: {0}'.format(Temp))
+        logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(Temp,start_temp))
     #Dyna.set_temperature(end_temp,rate,0) #go to end, in rate, Fast settle
-    cmd_q.put("TEMP {0},{1},{2}".format(end_temp,rate,0))
-    error,Temp,status = Dyna.get_temperature()
+    s.sendall(bytes("TEMP {0},{1},{2}".format(end_temp,rate,0),'utf-8'))
+    data = s.recv(1024)
+    assert data == b'0\r\n' #assert no errors from dynacool
+    s.sendall(bytes("TEMP?",'utf-8'))
+    data = s.recv(1024)
+    error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
     while status == 1:
         #wait for start of movement
         logging.info('waiting')
-        error,Temp,status = Dyna.get_temperature()
+        s.sendall(bytes("TEMP?",'utf-8'))
+        data = s.recv(1024)
+        error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
     logging.info('start measure')
     eel.set_meas_status('start measurement.')
-    error,Temp,status = Dyna.get_temperature()
+
+    s.sendall(bytes("TEMP?",'utf-8'))
+    data = s.recv(1024)
+    error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
     while status == 2 or status == 5: #tracking, going in defined rate.
         ##measuring
-        error,Temp,status = Dyna.get_temperature()
+        s.sendall(bytes("TEMP?",'utf-8'))
+        data = s.recv(1024)
+        error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
         #Time = Dyna.get_timestamp()
-        Time = 0
+        s.sendall(bytes("TIME?",'utf-8'))
+        Time = int(s.recv(1024).decode().split(',')[0])
+        logging.debug(Time)
         R = measure_resistance(keithley)
         new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Resistance[Ohm]']) #maybe keep file open?
         del new_row
@@ -220,7 +245,7 @@ def QD_socket(HOST='localhost',PORT=5000):
 
 
 
-eel.spawn(QD_socket)
+#eel.spawn(QD_socket)
 #cmd_q.put('TEMP?')
 
 #Dyna = qdinstrument.QDInstrument('DYNACOOL')

@@ -17,7 +17,7 @@ while RUN:
         while True:
             data = conn.recv(1024)
             #if not data: break
-            if data == b'exit':1
+            if data == b'exit':
                 print('exiting')
                 RUN = False
                 break
