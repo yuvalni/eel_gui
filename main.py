@@ -141,7 +141,8 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     #cmd_q.put("TEMP{0},{1},{2}".format(start_temp,20,0))
     s.sendall(bytes("TEMP {0},{1},{2}".format(start_temp,20,0),'utf-8'))
     data = s.recv(1024)
-    assert data == b'0\r\n' #assert no errors from dynacool
+    #print(data)
+    #assert data == b'0\r\n' #assert no errors from dynacool
     eel.set_meas_status('waiting for temperature.')
     logging.info('set Temperature and wait')
     #error,Temp,status = Dyna.get_temperature()
@@ -168,7 +169,8 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     #Dyna.set_temperature(end_temp,rate,0) #go to end, in rate, Fast settle
     s.sendall(bytes("TEMP {0},{1},{2}".format(end_temp,rate,0),'utf-8'))
     data = s.recv(1024)
-    assert data == b'0\r\n' #assert no errors from dynacool
+    #print(data)
+    #assert data == b'0\r\n' #assert no errors from dynacool
     s.sendall(bytes("TEMP?",'utf-8'))
     data = s.recv(1024)
     error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
@@ -191,7 +193,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
         error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
         #Time = Dyna.get_timestamp()
         s.sendall(bytes("TIME?",'utf-8'))
-        Time = int(s.recv(1024).decode().split(',')[0])
+        Time = int(round(s.recv(1024).decode().split(',')[0]))
         logging.debug(Time)
         R = measure_resistance(keithley)
         new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Resistance[Ohm]']) #maybe keep file open?
@@ -250,7 +252,7 @@ def QD_socket(HOST='localhost',PORT=5000):
 
 #Dyna = qdinstrument.QDInstrument('DYNACOOL')
 try:
-    eel.start('index.html')
+    eel.start('index_materialize.html')
 except (SystemExit, MemoryError, KeyboardInterrupt):
     # But if we don't catch these safely, the script will crash
     pass
