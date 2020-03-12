@@ -3,16 +3,10 @@
   <head>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
     <meta charset="utf-8">
     <title></title>
-    <script type="text/javascript">
-          document.addEventListener('DOMContentLoaded', function() {
-          var elems = document.querySelectorAll('select');
-          var instances = M.FormSelect.init(elems, options);
-        });
-    </script>
-
 
     <script type="text/javascript" src="/eel.js"></script>
     <script>
@@ -26,11 +20,9 @@
       ind = document.getElementById("server_connection_ind")
       if (status){
         ind.innerHTML = "Connected"
-        ind.className = "btn btn-success"
       }
       else{
-        ind.value = "Not Connected"
-        ind.className = "btn btn-warning"
+        ind.innerHTML = "disconnected"
       }
 
     }
@@ -57,16 +49,17 @@
 
 
     function SubmitTempSet() {
-    var setpoint = $("#temp_setpoint").val();
-    var rate = $("#temp_rate").val();
-    var mode = $("#temp_mode").val()[0];
+
+    var setpoint = document.getElementById("temp_setpoint").value
+    var rate = document.getElementById("temp_rate").value
+    var mode = document.getElementById("temp_mode").value
     eel.set_temperature_settings(setpoint,rate,mode)
     };
 
     function SubmitFieldSet(){
-      var setpoint = $("#magnet_setpoint").val();
-      var rate = $("#mag_rate").val();
-      var mode = $("#magnet_mode").val()[0];
+      var setpoint = document.getElementById("magnet_setpoint").value
+      var rate = document.getElementById("mag_rate").value
+      var mode = document.getElementById("magnet_mode").value
     eel.set_magnet_settings(setpoint,rate,mode)
     };
 
@@ -131,13 +124,16 @@
                             <input type="text" class="form-control" id="temp_rate" value="20">
                           </div>
                           <div class="input-field">
-                         <label for="temp_mode">Mode</label>
-                         <select id="temp_mode">
+
+                         <select>
                            <option value='0' selected>Fast</option>
                            <option value='1'>No Overshoot</option>
                          </select>
+                         <label>Mode</label>
                        </div>
+
                        <button type="button" class="btn btn-primary" onclick="SubmitTempSet()">Set Temperature</button>
+
                 </form>
             </div>
             <div class="divider"></div>
@@ -253,6 +249,11 @@
   });
 
   </script>
-
+  <script type="javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+        var elems = document.querySelectorAll('select');
+        var instances = M.FormSelect.init(elems, options);
+      });
+  </script>
   </body>
 </html>

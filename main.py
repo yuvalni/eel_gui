@@ -15,7 +15,6 @@ from pymeasure.instruments.keithley import Keithley2400
 data_path = os.path.join(os.getcwd(),'data')
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
-
 c_handler = logging.StreamHandler()
 f_handler = logging.FileHandler('logging.log')
 c_handler.setLevel(logging.DEBUG)
@@ -37,7 +36,7 @@ eel.init('web')
 def set_temperature_settings(setpoint,rate,mode):
     if not set_temperature_lock.locked():
         #Dyna.set_temperature(setpoint,rate,mode)
-        cmd_q.put("TEMP {0},{1},{2}".format(setpoint,20,0))
+        send_command_to_socket("TEMP {0},{1},{2}".format(setpoint,20,0))
         logging.info('set Temp to {0} K at {1} K/min. mode:{2}'.format(setpoint,rate,mode))
     else:
         logging.info('temperature settings is locked.')
@@ -45,8 +44,7 @@ def set_temperature_settings(setpoint,rate,mode):
 @eel.expose
 def set_magnet_settings(setpoint,rate,mode):
     if not set_temperature_lock.locked():
-        #Dyna.set_field(setpoint,rate,mode,-1)
-        cmd_q.put("FIELD {0},{1},{2}".format(setpoint,rate,mode))
+        send_command_to_socket("FIELD {0},{1},{2}".format(setpoint,rate,mode))
         logging.info('set magnet to {0} oe at {1} oe/min. mode:{2}'.format(setpoint,rate,mode))
     else:
         logging.info('magnet settings is locked.')
@@ -122,14 +120,35 @@ def halt_measurement():
     logging.info('sending stop command.')
     halt_meas.set()
 
+def set_temp_from_socket(socket,temp,rate):
+    socket.sendall(bytes("TEMP {0},{1},{2}".format(temp,rate,0),'utf-8'))
+    data = socket.recv(1024)
+    return data
+def get_temp_from_socket(socket):
+    socket.sendall(bytes("TEMP?",'utf-8'))
+    data = socket.recv(1024)
+    error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
+    return error, Temp, status
+
+def get_time_from_socket(s):
+    s.sendall(bytes("TIME?",'utf-8'))
+    return int(round(float(s.recv(1024).decode().split(',')[0])))
+
 @eel.expose
-def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
+def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='localhost',PORT=5000):
     eel.toggle_start_measure()
     breaked = False
 
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #reach the server
-    s.connect(('localhost',5000))   #handle not connecting
-    logging.info('connected to server. whithn RT_seq')
+    try:
+        s.connect((HOST,PORT))   #handle not connecting
+        eel.change_connection_ind(True)
+        logging.info('connected to server. whithn RT_seq')
+    except:
+        logging.info('not connected to server') #handle this!!!
+        eel.change_connection_ind(False)
+        eel.set_meas_status('something is wrong.')
+
     set_temperature_lock.acquire()
     stop.clear()
     halt_meas.clear()
@@ -139,16 +158,13 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     eel.spawn(send_measure_data_to_page)
     #Dyna.set_temperature(start_temp,20,0) #go to start, 20 K/min, Fast settle
     #cmd_q.put("TEMP{0},{1},{2}".format(start_temp,20,0))
-    s.sendall(bytes("TEMP {0},{1},{2}".format(start_temp,20,0),'utf-8'))
-    data = s.recv(1024)
+    set_temp_from_socket(s,start_temp,20)
     #print(data)
     #assert data == b'0\r\n' #assert no errors from dynacool
     eel.set_meas_status('waiting for temperature.')
     logging.info('set Temperature and wait')
     #error,Temp,status = Dyna.get_temperature()
-    s.sendall(bytes("TEMP?",'utf-8'))
-    data = s.recv(1024)
-    error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
+    error, Temp, status = get_temp_from_socket(s)
     while status != 1 and status != 5: #add timeout
         if halt_meas.is_set():
             logging.info('stoped measurement.')
@@ -159,42 +175,31 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
             eel.toggle_start_measure()
             return False
         #print(status)
-        s.sendall(bytes("TEMP?",'utf-8'))
-        data = s.recv(1024)
-        error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
+        error, Temp, status = get_temp_from_socket(s)
         #logging.debug('waiting for temp, status:{}'.format(status))
         eel.sleep(1)
     if (Temp != start_temp):
         logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(Temp,start_temp))
     #Dyna.set_temperature(end_temp,rate,0) #go to end, in rate, Fast settle
-    s.sendall(bytes("TEMP {0},{1},{2}".format(end_temp,rate,0),'utf-8'))
-    data = s.recv(1024)
+    set_temp_from_socket(s,end_temp,rate)
     #print(data)
     #assert data == b'0\r\n' #assert no errors from dynacool
-    s.sendall(bytes("TEMP?",'utf-8'))
-    data = s.recv(1024)
-    error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
+    error, Temp, status = get_temp_from_socket(s)
     while status == 1:
         #wait for start of movement
         logging.info('waiting')
-        s.sendall(bytes("TEMP?",'utf-8'))
-        data = s.recv(1024)
-        error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
+        error, Temp, status = get_temp_from_socket(s)
     logging.info('start measure')
     eel.set_meas_status('start measurement.')
 
-    s.sendall(bytes("TEMP?",'utf-8'))
-    data = s.recv(1024)
-    error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
+    error, Temp, status = get_temp_from_socket(s)
     while status == 2 or status == 5: #tracking, going in defined rate.
         ##measuring
-        s.sendall(bytes("TEMP?",'utf-8'))
-        data = s.recv(1024)
-        error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
+        error, Temp, status = get_temp_from_socket(s)
         #Time = Dyna.get_timestamp()
-        s.sendall(bytes("TIME?",'utf-8'))
-        Time = int(round(s.recv(1024).decode().split(',')[0]))
-        logging.debug(Time)
+
+        Time = get_time_from_socket(s)
+        #logging.debug(Time)
         R = measure_resistance(keithley)
         new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Resistance[Ohm]']) #maybe keep file open?
         del new_row
@@ -217,6 +222,24 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name):
     halt_meas.clear()
     eel.toggle_start_measure()
     stop.set() #kill thread
+
+def send_command_to_socket(command,HOST='localhost',PORT=5000):
+    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    logging.info('Attempt connect to server.')
+    try:
+        s.connect((HOST,PORT))
+        logging.info('connected to server.')
+        eel.change_connection_ind(True)
+        s.sendall(bytes(command,'utf-8'))
+        data = s.recv(1024)
+        s.send(b'disconnect')
+        s.close()
+        eel.change_connection_ind(False)
+        return data
+    except WindowsError:
+        eel.change_connection_ind(False)
+        logging.info('Connection to server failed.')
+        return False
 
 def QD_socket(HOST='localhost',PORT=5000):
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
