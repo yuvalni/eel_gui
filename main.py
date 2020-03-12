@@ -36,7 +36,7 @@ eel.init('web')
 def set_temperature_settings(setpoint,rate,mode):
     if not set_temperature_lock.locked():
         #Dyna.set_temperature(setpoint,rate,mode)
-        send_command_to_socket("TEMP {0},{1},{2}".format(setpoint,20,0))
+        send_command_to_socket("TEMP {0},{1},{2}".format(setpoint,rate,mode))
         logging.info('set Temp to {0} K at {1} K/min. mode:{2}'.format(setpoint,rate,mode))
     else:
         logging.info('temperature settings is locked.')

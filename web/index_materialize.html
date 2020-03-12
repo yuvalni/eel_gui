@@ -9,6 +9,12 @@
     <title></title>
 
     <script type="text/javascript" src="/eel.js"></script>
+    <script type="javascript">
+          document.addEventListener('DOMContentLoaded', function() {
+          var elems = document.querySelectorAll('select');
+          var instances = M.FormSelect.init(elems, options);
+        });
+    </script>
     <script>
 
     eel.expose(set_meas_status)
@@ -52,14 +58,14 @@
 
     var setpoint = document.getElementById("temp_setpoint").value
     var rate = document.getElementById("temp_rate").value
-    var mode = document.getElementById("temp_mode").value
+    var mode = document.getElementById("temp_form").elements["temp_mode"].value;
     eel.set_temperature_settings(setpoint,rate,mode)
     };
 
     function SubmitFieldSet(){
       var setpoint = document.getElementById("magnet_setpoint").value
       var rate = document.getElementById("mag_rate").value
-      var mode = document.getElementById("magnet_mode").value
+      var mode = document.getElementById("magnet_form").elements["magnet_mode"].value;
     eel.set_magnet_settings(setpoint,rate,mode)
     };
 
@@ -114,7 +120,7 @@
           <div class="container">
 
           <div class="section">
-                  <form>
+                  <form id="temp_form">
                         <div class="input-field">
                         <label for="temp_setpoint">Set Temperature</label>
                         <input type="text" class="form-control" id="temp_setpoint" value="300">
@@ -123,14 +129,17 @@
                             <label for="temp_rate">Set Rate</label>
                             <input type="text" class="form-control" id="temp_rate" value="20">
                           </div>
-                          <div class="input-field">
 
-                         <select>
-                           <option value='0' selected>Fast</option>
-                           <option value='1'>No Overshoot</option>
-                         </select>
-                         <label>Mode</label>
-                       </div>
+                       <p>
+                           <label>
+                             <input name="temp_mode" type="radio" value='0' checked />
+                             <span>Fast</span>
+                           </label>
+                           <label>
+                             <input name="temp_mode" type="radio" value='1'/>
+                             <span>No Overshoot</span>
+                           </label>
+                       </p>
 
                        <button type="button" class="btn btn-primary" onclick="SubmitTempSet()">Set Temperature</button>
 
@@ -138,7 +147,7 @@
             </div>
             <div class="divider"></div>
             <div class="section">
-                          <form>
+                          <form id = "magnet_form">
                             <div class="input-field">
                           <label for="magnet_setpoint ">Set Field</label>
                           <input type="text" class="form-control" id="magnet_setpoint" value="0">
@@ -147,16 +156,26 @@
                           <label for="mag_rate">Set Rate</label>
                           <input type="text" class="form-control" id="mag_rate" value="20">
                         </div>
-                      <div class="input-field">
-                         <select id="magnet_mode">
-                           <option value='0' selected>Linear</option>
-                           <option value='1'>No Overshoot</option>
-                           <option value='2'>Oscillate</option>
-                         </select>
-                         <label for="magnet_mode">Mode</label>
-                     </div>
 
+                     <p>
+                        <label>
+                          <input name="magnet_mode" id="magnet_mode" type="radio" value='0' checked />
+                          <span>Linear</span>
+                        </label>
+
+                         <label>
+                           <input name="magnet_mode" type="radio" value='1'/>
+                           <span>No Overshoot</span>
+                         </label>
+                       </p>
+                       <p>
+                         <label>
+                           <input name="magnet_mode" type="radio" value='2'/>
+                           <span>Oscillate</span>
+                         </label>
+                       </p>
                      <button type="button" class="btn btn-primary" onclick="SubmitFieldSet()">Set magnet</button>
+
                       </form>
               </div>
         </div>
@@ -249,11 +268,6 @@
   });
 
   </script>
-  <script type="javascript">
-        document.addEventListener('DOMContentLoaded', function() {
-        var elems = document.querySelectorAll('select');
-        var instances = M.FormSelect.init(elems, options);
-      });
-  </script>
+
   </body>
 </html>
