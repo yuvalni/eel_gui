@@ -83,6 +83,7 @@ def measure_resistance(sourcemeter):
     V_p = sourcemeter.voltage
     eel.sleep(0.1)
     sourcemeter.ramp_to_current(-sourcemeter.source_current)
+    eel.sleep(0.1)
     sourcemeter.measure_voltage()
     V_m = sourcemeter.voltage
     I = sourcemeter.source_current
@@ -126,6 +127,11 @@ def set_temp_from_socket(socket,temp,rate):
     socket.sendall(bytes("TEMP {0},{1},{2}".format(temp,rate,0),'utf-8'))
     data = socket.recv(1024)
     return data
+
+def set_field_from_socket(socket,setpoint,rate,mode):
+        socket.sendall(bytes("FIELD {0},{1},{2}".format(setpoint,rate,mode),'utf-8'))
+        data = socket.recv(1024)
+        return data
 
 def get_temp_from_socket(socket):
     socket.sendall(bytes("TEMP?",'utf-8'))
@@ -216,6 +222,14 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         if np.abs(Temp - float(end_temp)) < 0.01: #we are close to the finnish line. don't wait for setteling
             break
 
+
+    set_temp_from_socket(s,start_temp,20) #go back to start
+    for field in fields:
+        set_field_from_socket(s,field,100,'Linear')
+        #wait for field to set and temperature!!
+
+        set_temp_from_socket(s,end_temp,rate) #start sweeping
+        #measureee
     if not breaked:
         eel.set_meas_status('reached end Temperature.')
         logging.info('reached end Temperature.')

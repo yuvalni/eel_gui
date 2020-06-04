@@ -2,8 +2,9 @@
 <html lang="en" dir="ltr">
   <head>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <link rel="stylesheet" href="C:\Users\יובל\wx\eel\materialize\css\materialize.min.css">
+    <script src="C:\Users\יובל\wx\eel\materialize\js\materialize.min.js"></script>
+    <script src="C:\Users\יובל\wx\eel\materialize\noUiSlider-14.5.0\src\nouislider.js" charset="utf-8"></script>
 
     <meta charset="utf-8">
     <title></title>
@@ -147,6 +148,7 @@
             </div>
             <div class="divider"></div>
             <div class="section">
+
                           <form id = "magnet_form">
                             <div class="input-field">
                           <label for="magnet_setpoint ">Set Field</label>
@@ -175,8 +177,14 @@
                          </label>
                        </p>
                      <button type="button" class="btn btn-primary" onclick="SubmitFieldSet()">Set magnet</button>
-
                       </form>
+
+              </div>
+              <div class="divider"></div>
+              <div class="section">
+              <div>
+                <input type="text" class="form-control" id="meas_status" value="" placeholder="Status" disabled>
+              </div>
               </div>
         </div>
         </div>
@@ -222,13 +230,13 @@
                   <div class="col s1.5">
                     <button type="button" class="btn #b71c1c red darken-4" onclick="eel.halt_measurement()">Stop</button>
                   </div>
-                  <div class="col s2">
-                    <input type="text" class="form-control" id="meas_status" value="" placeholder="Status" disabled>
+                  <div class="col s4">
+
                   </div>
   </div>
     </div>
  </footer>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
   <script>
 
   var ctx = document.getElementById('RT').getContext('2d');
@@ -268,6 +276,7 @@
   });
 
   </script>
+
 
   </body>
 </html>
