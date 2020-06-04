@@ -67,6 +67,7 @@ def send_measure_data_to_page():
 def measure_rand():
     logging.info('start measuring')
     eel.spawn(send_measure_data_to_page)
+    ##where measurement is happening
     for i in range(100):
         meas = random.randint(0,100)
         q.put((i,meas))
@@ -84,8 +85,9 @@ def measure_resistance(sourcemeter):
     sourcemeter.ramp_to_current(-sourcemeter.source_current)
     sourcemeter.measure_voltage()
     V_m = sourcemeter.voltage
+    I = sourcemeter.source_current
     sourcemetery.ramp_to_current(0)
-    return (V_p - V_m)/sourcemeter.source_current
+    return (V_p - V_m)/I
 
 def initialize_keithley(I,V_comp,nplc):
     if False:
@@ -124,6 +126,7 @@ def set_temp_from_socket(socket,temp,rate):
     socket.sendall(bytes("TEMP {0},{1},{2}".format(temp,rate,0),'utf-8'))
     data = socket.recv(1024)
     return data
+
 def get_temp_from_socket(socket):
     socket.sendall(bytes("TEMP?",'utf-8'))
     data = socket.recv(1024)
@@ -153,11 +156,10 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     stop.clear()
     halt_meas.clear()
     file_name = initialize_file(sample_name)
-    keithley = initialize_keithley(I,V_comp,nplc) # return keith object
+    keithley = initialize_keithley(I,V_comp,nplc) # return keith2400 object
     logging.info('start RT measurement.')
-    eel.spawn(send_measure_data_to_page)
-    #Dyna.set_temperature(start_temp,20,0) #go to start, 20 K/min, Fast settle
-    #cmd_q.put("TEMP{0},{1},{2}".format(start_temp,20,0))
+    eel.spawn(send_measure_data_to_page) ## start messaging function to the page
+
     set_temp_from_socket(s,start_temp,20)
     #print(data)
     #assert data == b'0\r\n' #assert no errors from dynacool
@@ -165,7 +167,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     logging.info('set Temperature and wait')
     #error,Temp,status = Dyna.get_temperature()
     error, Temp, status = get_temp_from_socket(s)
-    while status != 1 and status != 5: #add timeout
+    while status != 1 and status != 5: #add timeout wait for temperature to seetle
         if halt_meas.is_set():
             logging.info('stoped measurement.')
             eel.set_meas_status('measurement stoped.')
@@ -181,7 +183,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     if (Temp != start_temp):
         logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(Temp,start_temp))
     #Dyna.set_temperature(end_temp,rate,0) #go to end, in rate, Fast settle
-    set_temp_from_socket(s,end_temp,rate)
+    set_temp_from_socket(s,end_temp,rate) ## set's the goal temperture for the sweep
     #print(data)
     #assert data == b'0\r\n' #assert no errors from dynacool
     error, Temp, status = get_temp_from_socket(s)
@@ -201,6 +203,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         Time = get_time_from_socket(s)
         #logging.debug(Time)
         R = measure_resistance(keithley)
+        #saving:
         new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Resistance[Ohm]']) #maybe keep file open?
         del new_row
         q.put((Temp,R))
@@ -210,7 +213,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
             breaked = True
             break
 
-        if np.abs(Temp - float(end_temp)) < 0.01:
+        if np.abs(Temp - float(end_temp)) < 0.01: #we are close to the finnish line. don't wait for setteling
             break
 
     if not breaked:
@@ -218,10 +221,11 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         logging.info('reached end Temperature.')
     if False: #mocking
         keithley.shutdown()
-    set_temperature_lock.release()
+
+    set_temperature_lock.release() #let the user control temperature
     halt_meas.clear()
     eel.toggle_start_measure()
-    stop.set() #kill thread
+    stop.set() #kill eel messagin thread
 
 def send_command_to_socket(command,HOST='localhost',PORT=5000):
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
