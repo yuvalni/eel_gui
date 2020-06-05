@@ -27,6 +27,7 @@ logger.addHandler(c_handler)
 logger.addHandler(f_handler)
 
 q = Queue()
+q_temp = Queue()
 cmd_q = Queue()
 data_q = Queue(maxsize = 1)
 halt_meas = Event()
@@ -61,9 +62,15 @@ def send_measure_data_to_page():
             value = q.get()
             T,R = value
             eel.get_RT_data(T,R)
+        elif not q_temp.empty():
+            value = q_temp.get()
+            temp, field= value
+            eel.get_field_temp(field,temp)
         else:
             eel.sleep(0.5)
     logging.debug('thread is exiting.')
+
+
 
 
 @eel.expose
@@ -186,6 +193,7 @@ def set_temp_field_and_wait(temp,field,s):
     error, field, fieldStatus = get_field_from_socket(s)
     while ((status != 1 and status != 5) or fieldStatus != 4): #add timeout wait for temperature to seetle
     # 1-> stable;  5-> near field4 => stable
+
         if halt_meas.is_set():
             logging.info('stoped measurement.')
             eel.set_meas_status('measurement stoped.')
@@ -201,6 +209,7 @@ def set_temp_field_and_wait(temp,field,s):
         #print(status)
         error, Temp, status = get_temp_from_socket(s)
         error, field, fieldStatus = get_field_from_socket(s)
+        q_temp.put((Temp,field))
         #logging.debug('waiting for temp, status:{}'.format(status))
         eel.sleep(1)
     if (Temp != temp):
@@ -293,6 +302,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Field [oe]':[field],'Resistance[Ohm]':[R],'I[Amps]':[I]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]']) #maybe keep file open?
         del new_row
         q.put((Temp,R)) #sending to gui
+        q_temp.put((Temp,field))
         if halt_meas.is_set():
             logging.info('stoped measurement.')
             eel.set_meas_status('measurement stoped.')
@@ -335,6 +345,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         error, Temp, status = get_temp_from_socket(s)
         while status == 2 or status == 5: #2 -> tracking, 5->Near going in defined rate.
             ##measuring
+            q_temp.put((Temp,field))
             error, Temp, status = get_temp_from_socket(s)
             #Time = Dyna.get_timestamp()
 

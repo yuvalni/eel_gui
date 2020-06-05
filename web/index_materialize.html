@@ -34,6 +34,12 @@
 
     }
 
+    eel.expose(get_field_temp);
+    function get_field_temp(field,temp){
+      document.getElementById('current_field').value = field
+      document.getElementById('current_temp').value = temp
+    }
+
     eel.expose(get_RT_data);
     function get_RT_data(T,R) {
       const i = myChart.data.datasets.length-1
@@ -260,8 +266,11 @@
                   <div class="col s1.5">
                     <button type="button" class="btn #b71c1c red darken-4" onclick="eel.halt_measurement()">Stop</button>
                   </div>
-                  <div class="col s4">
-
+                  <div class="col s2">
+                  <input type="text" class="form-control" id="current_temp" value="" placeholder="Temperature" disabled>
+                  </div>
+                  <div class="col s2">
+                  <input type="text" class="form-control" id="current_field" value="" placeholder="Field" disabled>
                   </div>
   </div>
     </div>
