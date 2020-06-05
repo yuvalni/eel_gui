@@ -44,7 +44,7 @@ def set_temperature_settings(setpoint,rate,mode):
 @eel.expose
 def set_magnet_settings(setpoint,rate,mode):
     if not set_temperature_lock.locked():
-        send_command_to_socket("FIELD {0},{1},{2}".format(setpoint,rate,mode))
+        send_command_to_socket("FIELD {0},{1},{2},0".format(setpoint,rate,mode))
         logging.info('set magnet to {0} oe at {1} oe/min. mode:{2}'.format(setpoint,rate,mode))
     else:
         logging.info('magnet settings is locked.')
@@ -129,7 +129,7 @@ def set_temp_from_socket(socket,temp,rate):
     return data
 
 def set_field_from_socket(socket,setpoint,rate,mode):
-        socket.sendall(bytes("FIELD {0},{1},{2}".format(setpoint,rate,mode),'utf-8'))
+        socket.sendall(bytes("FIELD {0},{1},{2},0".format(setpoint,rate,mode),'utf-8'))
         data = socket.recv(1024)
         return data
 
@@ -139,12 +139,20 @@ def get_temp_from_socket(socket):
     error, Temp, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
     return error, Temp, status
 
+def get_field_from_socket(socket):
+    socket.sendall(bytes("FIELD?",'utf-8'))
+    data = socket.recv(1024)
+    error, Field, status = [float(x) for x in data.decode().split('\\')[0].split(',')]
+    return error, Field, status
+
 def get_time_from_socket(s):
     s.sendall(bytes("TIME?",'utf-8'))
     return int(round(float(s.recv(1024).decode().split(',')[0])))
 
 @eel.expose
 def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='localhost',PORT=5000):
+    fields = np.arange(-14,14,1)
+    logging.info('fields: ',fields)
     eel.toggle_start_measure()
     breaked = False
 
@@ -174,6 +182,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     #error,Temp,status = Dyna.get_temperature()
     error, Temp, status = get_temp_from_socket(s)
     while status != 1 and status != 5: #add timeout wait for temperature to seetle
+    # 1-> stable;  5-> near
         if halt_meas.is_set():
             logging.info('stoped measurement.')
             eel.set_meas_status('measurement stoped.')
@@ -181,6 +190,10 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
             stop.set()
             halt_meas.clear()
             eel.toggle_start_measure()
+            s.send(b'disconnect')
+            s.close()
+            eel.change_connection_ind(False)
+            logging.debug('Closed connection to Dyna')
             return False
         #print(status)
         error, Temp, status = get_temp_from_socket(s)
@@ -201,7 +214,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     eel.set_meas_status('start measurement.')
 
     error, Temp, status = get_temp_from_socket(s)
-    while status == 2 or status == 5: #tracking, going in defined rate.
+    while status == 2 or status == 5: #2 -> tracking, 5->Near going in defined rate.
         ##measuring
         error, Temp, status = get_temp_from_socket(s)
         #Time = Dyna.get_timestamp()
@@ -214,19 +227,34 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         del new_row
         q.put((Temp,R))
         if halt_meas.is_set():
-            logging.warning('stoped measurement.')
-            eel.set_meas_status('measurement stopped.')
-            breaked = True
-            break
+            logging.info('stoped measurement.')
+            eel.set_meas_status('measurement stoped.')
+            set_temperature_lock.release()
+            stop.set()
+            halt_meas.clear()
+            eel.toggle_start_measure()
+            s.send(b'disconnect')
+            s.close()
+            eel.change_connection_ind(False)
+            logging.debug('Closed connection to Dyna')
+            return False
 
         if np.abs(Temp - float(end_temp)) < 0.01: #we are close to the finnish line. don't wait for setteling
             break
 
-
+    logging.info('RT seq. finished. starting field sequence.')
     set_temp_from_socket(s,start_temp,20) #go back to start
+    logging.info('going to start temp: ',start_temp)
     for field in fields:
-        set_field_from_socket(s,field,100,'Linear')
+        field = field * 10000
+        set_field_from_socket(s,field,100,0)
+        print('setting field:',field)
         #wait for field to set and temperature!!
+        error, Temp, status = get_temp_from_socket(s)
+        error, field, status = get_field_from_socket(s)
+        print(get_field_from_socket(s))
+        #logging.debug(error,field,status)
+
 
         set_temp_from_socket(s,end_temp,rate) #start sweeping
         #measureee
@@ -240,6 +268,10 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     halt_meas.clear()
     eel.toggle_start_measure()
     stop.set() #kill eel messagin thread
+    s.send(b'disconnect')
+    s.close()
+    logging.debug('Closed connection to Dyna')
+    eel.change_connection_ind(False)
 
 def send_command_to_socket(command,HOST='localhost',PORT=5000):
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)

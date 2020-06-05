@@ -31,5 +31,19 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as s:
     data = s.recv(1024)
     print('Recived: ', data.decode())
 
-    s.send(b'disconnect')
-    #s.send(b'exit')
+    s.sendall(b'FIELD?')
+    data = s.recv(1024)
+    print('Recived: ', data.decode())
+    setpoint = 2000
+    rate =100
+    mode = 2
+
+    s.sendall(bytes("FIELD {0},{1},{2},1".format(setpoint,rate,mode),'utf-8'))
+    data = s.recv(1024)
+    print('Recived: ', data.decode())
+
+    s.sendall(b'FIELD?')
+    data = s.recv(1024)
+    print('Recived: ', data.decode())
+
+    s.send(b'exit')
