@@ -80,28 +80,34 @@ def measure_resistance(sourcemeter):
     if True: #'mocking'
         eel.sleep(0.5)
         return random.randint(0,25)
-    sourcemeter.ramp_to_current(sourcemeter.source_current)
-    sourcemeter.measure_voltage()
+    sourcemeter.enable_source() #should set current on
+    #sourcemeter.ramp_to_current(sourcemeter.source_current)
+    sourcemeter.measure_voltage() #is this needed? it is only setup!
+    eel.sleep(0.1)
     V_p = sourcemeter.voltage
-    eel.sleep(0.1)
-    sourcemeter.ramp_to_current(-sourcemeter.source_current)
-    eel.sleep(0.1)
-    sourcemeter.measure_voltage()
-    V_m = sourcemeter.voltage
-    I = sourcemeter.source_current
-    sourcemetery.ramp_to_current(0)
-    return (V_p - V_m)/I
+    sourcemeter.source_current = - source_current
 
-def initialize_keithley(I,V_comp,nplc):
+    eel.sleep(0.1)
+    V_m = sourcemeter.voltage
+    I = -sourcemeter.source_current #needs to measure not just say what is configure!!
+    sourcemeter.source_current = I
+    sourcemeter.shutdown() # turning the current off. not the device!
+
+    return (V_p - V_m)/I,I
+
+def initialize_keithley(I,V_comp,nplc,current_range=0.001,voltage_range = 0.001,address="GPIB::4"):
     if False:
-        sourcemeter = Keithley2400("GPIB::4")
+        sourcemeter = Keithley2400(address)
         sourcemeter.reset()
+        #setting current params
         sourcemeter.use_front_terminals()
-        sourcemeter.apply_current()
-        sourcemeter.compliance_voltage = V_comp
-        sourcemeter.measure_voltage(nplc=nplc, voltage=21.0, auto_range=True)
+        sourcemeter.apply_current(current_range,V_comp)
+        sourcemeter.wires = 4 # set to 4 wires
+        #sourcemeter.compliance_voltage = V_comp
         sourcemeter.source_current = I
-        sleep(0.1)
+
+        #setting voltage read params
+        sourcemeter.measure_voltage(nplc,voltage_range,False)
         return sourcemeter
     pass
 
@@ -117,7 +123,7 @@ def initialize_file(file_name):
     while os.path.exists(file_path):
         file_path = os.path.join(path,"RT"+str(i)+".csv")
         i = i +1
-    pd.DataFrame(columns = ['time','Temperature[k]','Resistance[Ohm]']).to_csv(file_path)
+    pd.DataFrame(columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]','I[Amps]']).to_csv(file_path)
     return file_path
 
 @eel.expose
@@ -174,7 +180,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     keithley = initialize_keithley(I,V_comp,nplc) # return keith2400 object
     logging.info('start RT measurement.')
     eel.spawn(send_measure_data_to_page) ## start messaging function to the page
-
+    set_field_from_socket(s,0,100,0)
     set_temp_from_socket(s,start_temp,20)
     #print(data)
     #assert data == b'0\r\n' #assert no errors from dynacool
@@ -182,8 +188,9 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     logging.info('set Temperature and wait')
     #error,Temp,status = Dyna.get_temperature()
     error, Temp, status = get_temp_from_socket(s)
-    while status != 1 and status != 5: #add timeout wait for temperature to seetle
-    # 1-> stable;  5-> near
+    error, field, fieldStatus = get_field_from_socket(s)
+    while ((status != 1 and status != 5) or fieldStatus != 4): #add timeout wait for temperature to seetle
+    # 1-> stable;  5-> near field4 => stable
         if halt_meas.is_set():
             logging.info('stoped measurement.')
             eel.set_meas_status('measurement stoped.')
@@ -198,6 +205,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
             return False
         #print(status)
         error, Temp, status = get_temp_from_socket(s)
+        error, field, fieldStatus = get_field_from_socket(s)
         #logging.debug('waiting for temp, status:{}'.format(status))
         eel.sleep(1)
     if (Temp != start_temp):
@@ -222,11 +230,11 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
 
         Time = get_time_from_socket(s)
         #logging.debug(Time)
-        R = measure_resistance(keithley)
+        R,I = measure_resistance(keithley)
         error, field, fieldStatus = get_field_from_socket(s)
 
         #saving:
-        new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Field [oe]':[field],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]']) #maybe keep file open?
+        new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Field [oe]':[field],'Resistance[Ohm]':[R],'I[Amps]':[I]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]']) #maybe keep file open?
         del new_row
         q.put((Temp,R))
         if halt_meas.is_set():
@@ -253,7 +261,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
             continue
         setfield = setfield * 10000
         set_field_from_socket(s,setfield,100,0)
-        eel.new_dataset('setfield/10000'+'T')
+
         set_temp_from_socket(s,start_temp,20) #go back to start
         print('setting field:',setfield)
         #wait for field to set and temperature!!
@@ -280,7 +288,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
             eel.sleep(1)
 
 
-
+        eel.new_dataset(str(setfield/10000)+'T')
         set_temp_from_socket(s,end_temp,rate) #start sweeping
         if (Temp != start_temp):
             logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(Temp,start_temp))
@@ -305,10 +313,10 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
             Time = get_time_from_socket(s)
 
             #logging.debug(Time)
-            R = measure_resistance(keithley)
+            R,I = measure_resistance(keithley)
             #saving:
             error, field, fieldStatus = get_field_from_socket(s)
-            new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Field [oe]':[field],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]']) #maybe keep file open?
+            new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Field [oe]':[field],'Resistance[Ohm]':[R],'I[Amps]':[I]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]']) #maybe keep file open?
             del new_row
             q.put((Temp,R))
             if halt_meas.is_set():

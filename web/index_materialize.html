@@ -46,13 +46,18 @@
       //temp_status.value = R
     }
 
+    let colors = ["#8e5ea2","#3cba9f","#e8c3b9","#c45850","#3e95cd"]
+    let i = 0;
 
     eel.expose(new_dataset);
     function new_dataset(name){
+      console.log(name,colors[i],i)
       myChart.data.datasets.push({
         label:  name,
+        backgroundColor: colors[i],
         data: []
       })
+    i = (i+1)%4
     };
 
 
