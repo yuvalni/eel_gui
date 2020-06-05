@@ -12,6 +12,8 @@ import os
 from datetime import date
 from pymeasure.instruments.keithley import Keithley2400
 
+#TODO: change dataset color by field in set
+
 data_path = os.path.join(os.getcwd(),'data')
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -152,7 +154,6 @@ def get_time_from_socket(s):
 @eel.expose
 def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='localhost',PORT=5000):
     fields = np.arange(-14,15,1)
-    logging.info('fields: ',fields)
     eel.toggle_start_measure()
     breaked = False
 
@@ -248,8 +249,11 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     set_temp_from_socket(s,start_temp,20) #go back to start
     logging.info('going to start temp.')
     for setfield in fields:
+        if setfield == 0:
+            continue
         setfield = setfield * 10000
         set_field_from_socket(s,setfield,100,0)
+        eel.new_dataset('setfield/10000'+'T')
         set_temp_from_socket(s,start_temp,20) #go back to start
         print('setting field:',setfield)
         #wait for field to set and temperature!!
@@ -257,7 +261,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         error, field, fieldStatus = get_field_from_socket(s)
         eel.set_meas_status('waiting for temperature and field.')
         logging.info('set temperature, field and wait')
-        eel.set_meas_status('Measuearing field')
+        eel.set_meas_status('Waiting for field and temperture')
         while(fieldStatus != 4 or (tempStatus!= 1 and tempStatus!= 5)): #4-> field holding. 1->tempstable 5-> temp near
             error, Temp, tempStatus = get_temp_from_socket(s)
             error, field, fieldStatus = get_field_from_socket(s)
@@ -290,7 +294,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
             logging.info('waiting')
             error, Temp, status = get_temp_from_socket(s)
         logging.info('start measure')
-        eel.set_meas_status('start measurement.')
+        eel.set_meas_status('start field measurement.')
 
         error, Temp, status = get_temp_from_socket(s)
         while status == 2 or status == 5: #2 -> tracking, 5->Near going in defined rate.

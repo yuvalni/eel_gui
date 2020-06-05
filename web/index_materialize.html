@@ -36,7 +36,8 @@
 
     eel.expose(get_RT_data);
     function get_RT_data(T,R) {
-      myChart.data.datasets[0].data.push({x:T,y:R})
+      const i = myChart.data.datasets.length-1
+      myChart.data.datasets[i].data.push({x:T,y:R})
       //myChart.options.scales.xAxes
       myChart.update()
       //var temp_cur = document.getElementById("temp_cur");
@@ -44,15 +45,17 @@
       //var temp_status = document.getElementById("temp_status");
       //temp_status.value = R
     }
-    //var data_timer = setInterval(get_data, 1000);
-    function get_data(){
-      $.get("/stream_temp_status", function(data, status){
-      var temp_cur = document.getElementById("temp_cur");
-      var temp_status = document.getElementById("temp_status");
-      temp_cur.value = data["temp"]
-      temp_status.value = data["status"]
-    });
+
+
+    eel.expose(new_dataset);
+    function new_dataset(name){
+      myChart.data.datasets.push({
+        label:  name,
+        data: []
+      })
     };
+
+
 
 
     function SubmitTempSet() {
@@ -79,7 +82,12 @@
       voltage_comp = document.getElementById("voltage").value
       nplc_speed = document.getElementById("nplc").value
       sample_name = document.getElementById("sample_name").value
-      myChart.data.datasets[0].data = []
+      //myChart.data.datasets[0].data = []
+      myChart.data.datasets=[{
+        label:  'RT',
+        backgroundColor: "#3e95cd",
+        data: []
+      }];
       myChart.update()
       eel.start_RT_sequence(start_temp,end_temp,rate,current,voltage_comp,nplc_speed,sample_name)
     };
@@ -244,11 +252,9 @@
     type: 'scatter',
     data:{
       datasets: [{
-        label:  'Resistance',
+        label:  'RT',
         backgroundColor: "#3e95cd",
-        data: [
-
-        ]
+        data: []
       }]
     },
     options:{
