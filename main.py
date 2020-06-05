@@ -158,35 +158,29 @@ def get_time_from_socket(s):
     s.sendall(bytes("TIME?",'utf-8'))
     return int(round(float(s.recv(1024).decode().split(',')[0])))
 
-@eel.expose
-def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='localhost',PORT=5000):
-    fields = np.arange(-14,15,1)
-    eel.toggle_start_measure()
-    breaked = False
 
-    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #reach the server
-    try:
-        s.connect((HOST,PORT))   #handle not connecting
-        eel.change_connection_ind(True)
-        logging.info('connected to server. whithn RT_seq')
-    except:
-        logging.info('not connected to server') #handle this!!!
-        eel.change_connection_ind(False)
-        eel.set_meas_status('something is wrong.')
-
+def setting_locks_before_measure():
     set_temperature_lock.acquire()
     stop.clear()
     halt_meas.clear()
-    file_name = initialize_file(sample_name)
-    keithley = initialize_keithley(I,V_comp,nplc) # return keith2400 object
-    logging.info('start RT measurement.')
-    eel.spawn(send_measure_data_to_page) ## start messaging function to the page
-    set_field_from_socket(s,0,100,0)
-    set_temp_from_socket(s,start_temp,20)
+
+def end_measurement(s):
+    set_temperature_lock.release() #let the user control temperature
+    halt_meas.clear()
+    eel.toggle_start_measure()
+    stop.set() #kill eel messagin thread
+    s.send(b'disconnect')
+    s.close()
+    logging.debug('Closed connection to Dyna')
+    eel.change_connection_ind(False)
+
+def set_temp_field_and_wait(temp,field,s):
+    set_field_from_socket(s,field,100,0)
+    set_temp_from_socket(s,temp,20)
     #print(data)
     #assert data == b'0\r\n' #assert no errors from dynacool
-    eel.set_meas_status('waiting for temperature.')
-    logging.info('set Temperature and wait')
+    eel.set_meas_status('waiting for temperature and field.')
+    logging.info('set Temperature field and wait')
     #error,Temp,status = Dyna.get_temperature()
     error, Temp, status = get_temp_from_socket(s)
     error, field, fieldStatus = get_field_from_socket(s)
@@ -209,35 +203,63 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         error, field, fieldStatus = get_field_from_socket(s)
         #logging.debug('waiting for temp, status:{}'.format(status))
         eel.sleep(1)
-    if (Temp != start_temp):
-        logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(Temp,start_temp))
-    #Dyna.set_temperature(end_temp,rate,0) #go to end, in rate, Fast settle
+    if (Temp != temp):
+        logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(Temp,temp))
+
+
+@eel.expose
+def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='localhost',PORT=5000):
+    fields = np.arange(-14,15,1)
+    eel.toggle_start_measure()
+    breaked = False
+
+    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #reach the server
+    try:
+        s.connect((HOST,PORT))   #handle not connecting
+        eel.change_connection_ind(True)
+        logging.info('connected to server. whithn RT_seq')
+    except:
+        logging.info('not connected to server') #handle this!!!
+        eel.change_connection_ind(False)
+        eel.set_meas_status('No connection to Dyna')
+        return False
+
+
+    setting_locks_before_measure()
+
+    #init files and keithley
+    file_name = initialize_file(sample_name)
+    keithley = initialize_keithley(I,V_comp,nplc) # return keith2400 object
+
+    logging.info('start RT measurement.')
+    eel.spawn(send_measure_data_to_page) ## start messaging function to the page
+
+    if not set_temp_field_and_wait(start_temp,0,s):
+        return False #if false then measurement stoped
+
     set_temp_from_socket(s,end_temp,rate) ## set's the goal temperture for the sweep
-    #print(data)
-    #assert data == b'0\r\n' #assert no errors from dynacool
+
     error, Temp, status = get_temp_from_socket(s)
     while status == 1:
         #wait for start of movement
         logging.info('waiting')
         error, Temp, status = get_temp_from_socket(s)
+        eel.sleep(0.1)
     logging.info('start measure')
     eel.set_meas_status('start measurement.')
 
+    #starting to measure!
     error, Temp, status = get_temp_from_socket(s)
     while status == 2 or status == 5: #2 -> tracking, 5->Near going in defined rate.
         ##measuring
         error, Temp, status = get_temp_from_socket(s)
-        #Time = Dyna.get_timestamp()
-
         Time = get_time_from_socket(s)
-        #logging.debug(Time)
         R,I = measure_resistance(keithley)
         error, field, fieldStatus = get_field_from_socket(s)
-
         #saving:
         new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Field [oe]':[field],'Resistance[Ohm]':[R],'I[Amps]':[I]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]']) #maybe keep file open?
         del new_row
-        q.put((Temp,R))
+        q.put((Temp,R)) #sending to gui
         if halt_meas.is_set():
             logging.info('stoped measurement.')
             eel.set_meas_status('measurement stoped.')
@@ -261,40 +283,11 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         if setfield == 0:
             continue
         setfield = setfield * 10000
-        set_field_from_socket(s,setfield,100,0)
-
-        set_temp_from_socket(s,start_temp,20) #go back to start
-        print('setting field:',setfield)
         #wait for field to set and temperature!!
-        error, Temp, tempStatus = get_temp_from_socket(s)
-        error, field, fieldStatus = get_field_from_socket(s)
-        eel.set_meas_status('waiting for temperature and field.')
-        logging.info('set temperature, field and wait')
-        eel.set_meas_status('Waiting for field and temperture')
-        while(fieldStatus != 4 or (tempStatus!= 1 and tempStatus!= 5)): #4-> field holding. 1->tempstable 5-> temp near
-            error, Temp, tempStatus = get_temp_from_socket(s)
-            error, field, fieldStatus = get_field_from_socket(s)
-            if halt_meas.is_set():
-                logging.info('stoped measurement.')
-                eel.set_meas_status('measurement stoped.')
-                set_temperature_lock.release()
-                stop.set()
-                halt_meas.clear()
-                eel.toggle_start_measure()
-                s.send(b'disconnect')
-                s.close()
-                eel.change_connection_ind(False)
-                logging.debug('Closed connection to Dyna')
-                return False
-            eel.sleep(1)
+        if not set_temp_field_and_wait(start_temp,setfield,s):
+            return False
 
-
-        eel.new_dataset(str(setfield/10000)+'T')
-        set_temp_from_socket(s,end_temp,rate) #start sweeping
-        if (Temp != start_temp):
-            logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(Temp,start_temp))
-        if (field != setfield):
-            logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(field,set_field))
+        eel.new_dataset(str(setfield/10000)+'T') # starting a new dataset, give it a name!
 
         set_temp_from_socket(s,end_temp,rate) ## set's the goal temperture for the sweep
         error, Temp, status = get_temp_from_socket(s)
@@ -303,6 +296,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
             logging.info('waiting')
             error, Temp, status = get_temp_from_socket(s)
         logging.info('start measure')
+
         eel.set_meas_status('start field measurement.')
 
         error, Temp, status = get_temp_from_socket(s)
@@ -343,14 +337,8 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     if False: #mocking
         keithley.shutdown()
 
-    set_temperature_lock.release() #let the user control temperature
-    halt_meas.clear()
-    eel.toggle_start_measure()
-    stop.set() #kill eel messagin thread
-    s.send(b'disconnect')
-    s.close()
-    logging.debug('Closed connection to Dyna')
-    eel.change_connection_ind(False)
+    end_measurement(s)
+
 
 def send_command_to_socket(command,HOST='localhost',PORT=5000):
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
