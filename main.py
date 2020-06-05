@@ -80,7 +80,7 @@ def measure_rand():
 def measure_resistance(sourcemeter):
     if True: #'mocking'
         eel.sleep(0.5)
-        return random.randint(0,25)
+        return random.randint(0,25), 0.001
     sourcemeter.enable_source() #should set current on
     #sourcemeter.ramp_to_current(sourcemeter.source_current)
     sourcemeter.measure_voltage() #is this needed? it is only setup!
@@ -205,7 +205,39 @@ def set_temp_field_and_wait(temp,field,s):
         eel.sleep(1)
     if (Temp != temp):
         logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(Temp,temp))
+    return True
 
+@eel.expose
+def start_cont_measure(current,voltage_comp,nplc_speed,sample_name,HOST='localhost',PORT=5000):
+    logging.info('start cont. meas.')
+    #s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #reach the server
+    #try:
+    #    s.connect((HOST,PORT))   #handle not connecting
+    #    eel.change_connection_ind(True)
+    #    logging.info('connected to server. whithin RT_seq')
+    #except:
+    #    logging.info('not connected to server') #handle this!!!
+    #    eel.change_connection_ind(False)
+    #    eel.set_meas_status('No connection to Dyna')
+    #    return False
+    stop.clear()
+    halt_meas.clear()
+    #file_name = initialize_file(sample_name)
+    keithley = initialize_keithley(current,voltage_comp,nplc_speed) # return keith2400 object
+    logging.debug('start measurement')
+    eel.spawn(send_measure_data_to_page) ## start messaging function to the page
+    while not halt_meas.is_set():
+        #error, Temp, status = get_temp_from_socket(s)
+        #Time = get_time_from_socket(s)
+        #error, field, fieldStatus = get_field_from_socket(s)
+        R,I = measure_resistance(keithley)
+        q.put((I,R*I)) #sending to gui
+        #new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Field [oe]':[field],'Resistance[Ohm]':[R],'I[Amps]':[I]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]']) #maybe keep file open?
+        #del new_row
+        eel.sleep(0.2)
+
+    halt_meas.clear()
+    stop.set()
 
 @eel.expose
 def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='localhost',PORT=5000):
@@ -235,6 +267,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
     eel.spawn(send_measure_data_to_page) ## start messaging function to the page
 
     if not set_temp_field_and_wait(start_temp,0,s):
+        logging.debug('false??')
         return False #if false then measurement stoped
 
     set_temp_from_socket(s,end_temp,rate) ## set's the goal temperture for the sweep
@@ -330,6 +363,7 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
             if np.abs(Temp - float(end_temp)) < 0.01: #we are close to the finnish line. don't wait for setteling
                 break
 
+            eel.sleep(0.1)
 
     if not breaked:
         eel.set_meas_status('reached end Temperature.')

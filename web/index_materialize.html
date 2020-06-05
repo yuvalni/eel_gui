@@ -94,7 +94,11 @@
         data: []
       }];
       myChart.update()
-      eel.start_RT_sequence(start_temp,end_temp,rate,current,voltage_comp,nplc_speed,sample_name)
+      if(!document.getElementById('manual').checked){
+        eel.start_RT_sequence(start_temp,end_temp,rate,current,voltage_comp,nplc_speed,sample_name)
+      }else{
+      eel.start_cont_measure(current,voltage_comp,nplc_speed,sample_name)
+      }
     };
 
 
@@ -198,6 +202,19 @@
               <div>
                 <input type="text" class="form-control" id="meas_status" value="" placeholder="Status" disabled>
               </div>
+              </div>
+              <div class="section">
+                Manual mode
+                <div>
+                  <div class="switch">
+                  <label>
+                    Off
+                    <input type="checkbox" id="manual">
+                    <span class="lever"></span>
+                    On
+                  </label>
+                </div>
+                </div>
               </div>
         </div>
         </div>
