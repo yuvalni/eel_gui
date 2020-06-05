@@ -151,7 +151,7 @@ def get_time_from_socket(s):
 
 @eel.expose
 def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='localhost',PORT=5000):
-    fields = np.arange(-14,14,1)
+    fields = np.arange(-14,15,1)
     logging.info('fields: ',fields)
     eel.toggle_start_measure()
     breaked = False
@@ -222,8 +222,10 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
         Time = get_time_from_socket(s)
         #logging.debug(Time)
         R = measure_resistance(keithley)
+        error, field, fieldStatus = get_field_from_socket(s)
+
         #saving:
-        new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Resistance[Ohm]']) #maybe keep file open?
+        new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Field [oe]':[field],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]']) #maybe keep file open?
         del new_row
         q.put((Temp,R))
         if halt_meas.is_set():
@@ -244,20 +246,84 @@ def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='l
 
     logging.info('RT seq. finished. starting field sequence.')
     set_temp_from_socket(s,start_temp,20) #go back to start
-    logging.info('going to start temp: ',start_temp)
-    for field in fields:
-        field = field * 10000
-        set_field_from_socket(s,field,100,0)
-        print('setting field:',field)
+    logging.info('going to start temp.')
+    for setfield in fields:
+        setfield = setfield * 10000
+        set_field_from_socket(s,setfield,100,0)
+        set_temp_from_socket(s,start_temp,20) #go back to start
+        print('setting field:',setfield)
         #wait for field to set and temperature!!
-        error, Temp, status = get_temp_from_socket(s)
-        error, field, status = get_field_from_socket(s)
-        print(get_field_from_socket(s))
-        #logging.debug(error,field,status)
+        error, Temp, tempStatus = get_temp_from_socket(s)
+        error, field, fieldStatus = get_field_from_socket(s)
+        eel.set_meas_status('waiting for temperature and field.')
+        logging.info('set temperature, field and wait')
+        eel.set_meas_status('Measuearing field')
+        while(fieldStatus != 4 or (tempStatus!= 1 and tempStatus!= 5)): #4-> field holding. 1->tempstable 5-> temp near
+            error, Temp, tempStatus = get_temp_from_socket(s)
+            error, field, fieldStatus = get_field_from_socket(s)
+            if halt_meas.is_set():
+                logging.info('stoped measurement.')
+                eel.set_meas_status('measurement stoped.')
+                set_temperature_lock.release()
+                stop.set()
+                halt_meas.clear()
+                eel.toggle_start_measure()
+                s.send(b'disconnect')
+                s.close()
+                eel.change_connection_ind(False)
+                logging.debug('Closed connection to Dyna')
+                return False
+            eel.sleep(1)
+
 
 
         set_temp_from_socket(s,end_temp,rate) #start sweeping
-        #measureee
+        if (Temp != start_temp):
+            logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(Temp,start_temp))
+        if (field != setfield):
+            logging.warning('start temp not achieved. current temp: {0}, setpoint: {1}'.format(field,set_field))
+
+        set_temp_from_socket(s,end_temp,rate) ## set's the goal temperture for the sweep
+        error, Temp, status = get_temp_from_socket(s)
+        while status == 1: #temp is stable
+            #wait for start of movement
+            logging.info('waiting')
+            error, Temp, status = get_temp_from_socket(s)
+        logging.info('start measure')
+        eel.set_meas_status('start measurement.')
+
+        error, Temp, status = get_temp_from_socket(s)
+        while status == 2 or status == 5: #2 -> tracking, 5->Near going in defined rate.
+            ##measuring
+            error, Temp, status = get_temp_from_socket(s)
+            #Time = Dyna.get_timestamp()
+
+            Time = get_time_from_socket(s)
+
+            #logging.debug(Time)
+            R = measure_resistance(keithley)
+            #saving:
+            error, field, fieldStatus = get_field_from_socket(s)
+            new_row = pd.DataFrame({'Time':[Time],'Temperature[k]':[Temp],'Field [oe]':[field],'Resistance[Ohm]':[R]}).to_csv(file_name, mode='a', header=False,columns = ['time','Temperature[k]','Field [oe]','Resistance[Ohm]']) #maybe keep file open?
+            del new_row
+            q.put((Temp,R))
+            if halt_meas.is_set():
+                logging.info('stoped measurement.')
+                eel.set_meas_status('measurement stoped.')
+                set_temperature_lock.release()
+                stop.set()
+                halt_meas.clear()
+                eel.toggle_start_measure()
+                s.send(b'disconnect')
+                s.close()
+                eel.change_connection_ind(False)
+                logging.debug('Closed connection to Dyna')
+                return False
+
+            if np.abs(Temp - float(end_temp)) < 0.01: #we are close to the finnish line. don't wait for setteling
+                break
+
+
     if not breaked:
         eel.set_meas_status('reached end Temperature.')
         logging.info('reached end Temperature.')

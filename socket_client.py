@@ -34,6 +34,7 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as s:
     s.sendall(b'FIELD?')
     data = s.recv(1024)
     print('Recived: ', data.decode())
+    
     setpoint = 2000
     rate =100
     mode = 2
