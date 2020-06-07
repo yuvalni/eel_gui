@@ -219,6 +219,7 @@ def set_temp_field_and_wait(temp,field,s):
 @eel.expose
 def start_cont_measure(current,voltage_comp,nplc_speed,sample_name,HOST='localhost',PORT=5000):
     logging.info('start cont. meas.')
+    eel.set_meas_status('start cont. meas.')
     #s = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #reach the server
     #try:
     #    s.connect((HOST,PORT))   #handle not connecting
@@ -247,6 +248,7 @@ def start_cont_measure(current,voltage_comp,nplc_speed,sample_name,HOST='localho
 
     halt_meas.clear()
     stop.set()
+    eel.set_meas_status('idle.')
 
 @eel.expose
 def start_RT_sequence(start_temp,end_temp,rate,I,V_comp,nplc,sample_name,HOST='localhost',PORT=5000):
